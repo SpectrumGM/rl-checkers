@@ -1,7 +1,5 @@
-"""
-Monte Carlo Tree Search для AlphaZero.
-MCTS использует нейронку чтобы умно искать лучший ход.
-"""
+"""Monte Carlo Tree Search для AlphaZero.
+Он использует нейронку чтобы умно искать лучший ход"""
 import numpy as np
 import torch
 import math
