@@ -17,8 +17,6 @@ from agents.minimax_agent import MinimaxAgent
 from agents.random_agent import RandomAgent
 
 
-# ===================== STAGE 1: SUPERVISED =====================
-
 def generate_supervised_data(n_games=200):
     """Minimax vs Random — записываем позиции и ходы."""
     print(f"Generating {n_games} supervised games...")
@@ -105,7 +103,6 @@ def supervised_train(model, states, policy_targets, value_targets,
     return model
 
 
-# ===================== STAGE 2: SELF-PLAY =====================
 
 def self_play_game(model, num_sims=30):
     mcts = MCTS(model, num_sims)
