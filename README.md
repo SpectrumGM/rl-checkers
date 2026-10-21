@@ -5,7 +5,7 @@ A checkers engine in the style of DeepMind's AlphaZero: a convolutional network 
 **Monte Carlo Tree Search**. The rules engine, network, search, training loop, evaluation
 and GUI are written from scratch in Python and PyTorch, and trained on a single laptop CPU.
 
-**Play it in the browser:** _link coming soon_ (code in [`web/`](web/))
+**Play it in the browser:** https://rl-checkers.onrender.com/
 
 ## Results
 
