@@ -93,21 +93,6 @@ final model and every 5th checkpoint; the full training output is in `training_l
 
 
 
-## Run it
-
-```bash
-pip install -r requirements.txt
-
-python play.py alpha 3          # watch the engine vs minimax depth 3
-python play.py play_alpha       # play against it yourself (you are White)
-
-python benchmark.py ladder      # Elo ladder vs random and minimax depths 1-5
-python benchmark.py curve       # strength of every checkpoint vs minimax depth 3
-
-pip install -r web/requirements.txt
-uvicorn web.app:app             # web demo at http://127.0.0.1:8000
-```
-
 ## Layout
 
 ```
