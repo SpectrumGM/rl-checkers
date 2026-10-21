@@ -1,9 +1,6 @@
 # AlphaZero-Style Checkers
 
-A checkers engine in the style of DeepMind's AlphaZero: a convolutional network with a
-**policy head** (which move looks good) and a **value head** (who is winning) guides
-**Monte Carlo Tree Search**. The rules engine, network, search, training loop, evaluation
-and GUI are written from scratch in Python and PyTorch, and trained on a single laptop CPU.
+A checkers engine in the style of DeepMind's AlphaZero
 
 **Play it in the browser:** https://rl-checkers.onrender.com/
 
