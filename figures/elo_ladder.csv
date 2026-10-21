@@ -1,0 +1,8 @@
+player,elo
+minimax d5,1543
+minimax d4,1497
+minimax d3,1414
+minimax d2,1363
+final model (MCTS),1360
+minimax d1,1000
+random,916

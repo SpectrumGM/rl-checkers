@@ -1,0 +1,8 @@
+services:
+  - type: web
+    name: rl-checkers
+    runtime: python
+    plan: free
+    buildCommand: pip install -r web/requirements.txt
+    startCommand: uvicorn web.app:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health

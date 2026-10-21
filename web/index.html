@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AlphaZero Checkers</title>
+<style>
+  :root {
+    --bg: #1c1a17; --panel: #26231f; --line: #3a352e; --text: #ece6dc; --muted: #a39a8c;
+    --dark: #8b5a2b; --light: #deb887; --frame: #3c1e0a;
+    --white-piece: #fff8f0; --white-edge: #c8beaf; --black-piece: #2a2826; --black-edge: #111;
+    --gold: #daa520; --sel: rgba(255, 255, 100, .55); --target: rgba(100, 200, 100, .75);
+    --last: rgba(80, 160, 220, .45); --accent: #e0a85a;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 15px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
+  main { max-width: 1040px; margin: 0 auto; padding: 24px 16px 40px; }
+  header h1 { margin: 0; font-size: 26px; letter-spacing: -.01em; }
+  header p { margin: 6px 0 22px; color: var(--muted); max-width: 640px; }
+  header a { color: var(--accent); }
+  .layout { display: grid; grid-template-columns: auto 1fr; gap: 24px; align-items: start; }
+  .play { display: flex; gap: 10px; }
+  .evalbar { width: 18px; border-radius: 4px; overflow: hidden; background: var(--black-piece);
+             border: 1px solid var(--line); position: relative; }
+  .evalbar .w { position: absolute; left: 0; right: 0; bottom: 0; background: var(--white-piece);
+                transition: height .35s ease; }
+  .evalbar.flip .w { bottom: auto; top: 0; }
+  .boardcol { --sq: min(64px, calc((100vw - 70px) / 8)); }
+  .board { display: grid; grid-template-columns: repeat(8, var(--sq)); grid-template-rows: repeat(8, var(--sq));
+           border: 6px solid var(--frame); border-radius: 4px; user-select: none; }
+  .sq { position: relative; display: grid; place-items: center; }
+  .sq.l { background: var(--light); } .sq.d { background: var(--dark); cursor: default; }
+  .sq.last::before, .sq.sel::before, .sq.target::before { content: ""; position: absolute; inset: 0; }
+  .sq.last::before { background: var(--last); }
+  .sq.sel::before { background: var(--sel); }
+  .sq.target { cursor: pointer; }
+  .sq.target::before { inset: 34%; border-radius: 50%; background: var(--target); }
+  .sq.movable { cursor: pointer; }
+  .pc { position: relative; width: 78%; height: 78%; border-radius: 50%; z-index: 1;
+        display: grid; place-items: center; font-size: calc(var(--sq) * .38); color: var(--gold); }
+  .pc.w { background: radial-gradient(circle at 35% 30%, #fff, var(--white-piece) 55%, var(--white-edge));
+          box-shadow: 0 2px 0 var(--white-edge), 0 3px 6px rgba(0,0,0,.4); }
+  .pc.b { background: radial-gradient(circle at 35% 30%, #555, var(--black-piece) 55%, var(--black-edge));
+          box-shadow: 0 2px 0 #000, 0 3px 6px rgba(0,0,0,.5); }
+  .coords { display: grid; grid-template-columns: repeat(8, var(--sq)); color: var(--muted); font-size: 11px;
+            text-align: center; padding: 4px 0 0 34px; }
+
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 18px; }
+  .panel h2 { margin: 0 0 12px; font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  label { display: block; font-size: 13px; color: var(--muted); margin: 0 0 4px; }
+  select, button { font: inherit; color: var(--text); background: #1f1d1a; border: 1px solid var(--line);
+                   border-radius: 7px; padding: 8px 10px; width: 100%; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #1c1a17; font-weight: 600;
+                   cursor: pointer; }
+  button.primary:hover { filter: brightness(1.07); }
+  .status { margin: 16px 0 6px; font-size: 17px; font-weight: 600; min-height: 26px; }
+  .status .think { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--accent);
+                   margin-left: 6px; animation: pulse 1s infinite; vertical-align: middle; }
+  @keyframes pulse { 50% { opacity: .2; } }
+  .evaltext { color: var(--muted); font-size: 13px; margin-bottom: 14px; }
+  .moves { font-family: ui-monospace, Menlo, monospace; font-size: 13px; max-height: 210px; overflow-y: auto;
+           border-top: 1px solid var(--line); padding-top: 10px; color: var(--muted); }
+  .moves ol { margin: 0; padding-left: 26px; } .moves li { padding: 1px 0; }
+  .moves span { display: inline-block; min-width: 70px; color: var(--text); }
+  .about { margin-top: 18px; font-size: 13px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 12px; }
+  .about b { color: var(--text); font-weight: 600; }
+  @media (max-width: 760px) { .layout { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>AlphaZero Checkers</h1>
+    <p>Play against a checkers engine that taught itself with a neural network and Monte Carlo Tree Search,
+       or against classic minimax opponents for comparison.
+       <a href="https://github.com/SpectrumGM/rl-checkers">Source on GitHub</a></p>
+  </header>
+
+  <div class="layout">
+    <div class="boardcol">
+      <div class="play">
+        <div class="evalbar" id="evalbar" title="Neural network evaluation"><div class="w" id="evalw"></div></div>
+        <div class="board" id="board"></div>
+      </div>
+      <div class="coords" id="files"></div>
+    </div>
+
+    <div class="panel">
+      <h2>New game</h2>
+      <div class="row">
+        <div>
+          <label for="opp">Opponent</label>
+          <select id="opp">
+            <option value="alphazero">AlphaZero (network + search)</option>
+            <option value="network">Network only (no search)</option>
+            <option value="minimax1">Minimax depth 1</option>
+            <option value="minimax2">Minimax depth 2</option>
+            <option value="minimax3">Minimax depth 3</option>
+            <option value="minimax4">Minimax depth 4</option>
+            <option value="minimax5">Minimax depth 5</option>
+            <option value="random">Random moves</option>
+          </select>
+        </div>
+        <div>
+          <label for="side">You play</label>
+          <select id="side">
+            <option value="1">White (move first)</option>
+            <option value="-1">Black</option>
+          </select>
+        </div>
+      </div>
+      <button class="primary" id="newbtn">Start game</button>
+
+      <div class="status" id="status">Choose an opponent and press Start.</div>
+      <div class="evaltext" id="evaltext"></div>
+
+      <div class="moves"><ol id="moves"></ol></div>
+
+      <div class="about">
+        <b>How to play.</b> Click one of your pieces, then a green dot. Captures are mandatory and multi-jumps
+        are made in one click. A game is drawn after 40 moves without a capture.<br><br>
+        <b>The bar on the left</b> is the network's own estimate of who is winning (white = good for White).
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+const FILES = "abcdefgh";
+let S = null;            // server response: state, legal_moves, winner, eval
+let human = 1, opponent = "alphazero", selected = null, lastSquares = [], busy = false, history = [];
+
+const $ = id => document.getElementById(id);
+const sqName = (r, c) => FILES[c] + (8 - r);
+const flipped = () => human === -1;
+
+async function api(path, body) {
+  const r = await fetch(path, body ? { method: "POST", headers: { "Content-Type": "application/json" },
+                                       body: JSON.stringify(body) } : {});
+  if (!r.ok) throw new Error((await r.json()).detail || r.statusText);
+  return r.json();
+}
+
+function moveText(m) {
+  const sep = Math.abs(m[0][2] - m[0][0]) === 2 ? "x" : "-";
+  return sqName(m[0][0], m[0][1]) + m.map(s => sep + sqName(s[2], s[3])).join("");
+}
+
+function render() {
+  const board = $("board");
+  board.innerHTML = "";
+  const myTurn = S && S.winner === null && S.state.current_player === human && !busy;
+  const fromSet = new Set(myTurn ? S.legal_moves.map(m => m[0][0] + "," + m[0][1]) : []);
+  const targets = new Set(selected && myTurn
+      ? S.legal_moves.filter(m => m[0][0] === selected[0] && m[0][1] === selected[1])
+                     .map(m => m[m.length - 1][2] + "," + m[m.length - 1][3]) : []);
+
+  for (let i = 0; i < 8; i++) for (let j = 0; j < 8; j++) {
+    const r = flipped() ? 7 - i : i, c = flipped() ? 7 - j : j;
+    const d = document.createElement("div");
+    const key = r + "," + c;
+    d.className = "sq " + ((r + c) % 2 ? "d" : "l");
+    if (lastSquares.includes(key)) d.classList.add("last");
+    if (selected && selected[0] === r && selected[1] === c) d.classList.add("sel");
+    if (targets.has(key)) d.classList.add("target");
+    if (fromSet.has(key)) d.classList.add("movable");
+    const p = S ? S.state.board[r][c] : 0;
+    if (p) {
+      const pc = document.createElement("div");
+      pc.className = "pc " + (p > 0 ? "w" : "b");
+      if (Math.abs(p) === 2) pc.textContent = "♛";
+      d.appendChild(pc);
+    }
+    d.onclick = () => click(r, c, fromSet, targets);
+    board.appendChild(d);
+  }
+
+  $("files").innerHTML = [...Array(8)].map((_, j) => `<span>${FILES[flipped() ? 7 - j : j]}</span>`).join("");
+  const ev = S ? S.eval : 0;
+  $("evalw").style.height = (50 + 50 * ev) + "%";
+  $("evalbar").classList.toggle("flip", flipped());
+  $("evalbar").style.height = $("board").offsetHeight + "px";
+  $("evaltext").textContent = S ? `Network evaluation: ${ev >= 0 ? "+" : ""}${ev.toFixed(2)} for White` : "";
+
+  $("moves").innerHTML = history.reduce((acc, m, k) =>
+      k % 2 === 0 ? acc + `<li><span>${m}</span>` : acc + `<span>${m}</span></li>`, "");
+  $("moves").parentElement.scrollTop = 1e6;
+}
+
+function setStatus(text, thinking) {
+  $("status").innerHTML = text + (thinking ? '<span class="think"></span>' : "");
+}
+
+function afterMove() {
+  if (S.winner !== null) {
+    const msg = S.winner === 0 ? "Draw." : (S.winner === human ? "You win!" : "You lose.");
+    setStatus(msg);
+    return true;
+  }
+  return false;
+}
+
+async function aiTurn() {
+  busy = true;
+  setStatus("Opponent is thinking", true);
+  render();
+  try {
+    S = await api("/api/ai", { state: S.state, opponent });
+    const m = S.ai_move;
+    lastSquares = [m[0][0] + "," + m[0][1], ...m.map(s => s[2] + "," + s[3])];
+    history.push(moveText(m));
+  } catch (e) { setStatus("Error: " + e.message); busy = false; render(); return; }
+  busy = false;
+  if (!afterMove()) setStatus("Your move.");
+  render();
+}
+
+async function click(r, c, fromSet, targets) {
+  if (busy || !S || S.winner !== null || S.state.current_player !== human) return;
+  const key = r + "," + c;
+  if (fromSet.has(key)) { selected = [r, c]; render(); return; }
+  if (selected && targets.has(key)) {
+    const move = S.legal_moves.find(m => m[0][0] === selected[0] && m[0][1] === selected[1]
+                                         && m[m.length - 1][2] === r && m[m.length - 1][3] === c);
+    selected = null;
+    busy = true;
+    try { S = await api("/api/move", { state: S.state, move }); }
+    catch (e) { setStatus("Error: " + e.message); busy = false; render(); return; }
+    busy = false;
+    lastSquares = [move[0][0] + "," + move[0][1], ...move.map(s => s[2] + "," + s[3])];
+    history.push(moveText(move));
+    render();
+    if (!afterMove()) await aiTurn();
+  }
+}
+
+async function newGame() {
+  human = +$("side").value;
+  opponent = $("opp").value;
+  selected = null; lastSquares = []; history = [];
+  S = await api("/api/new");
+  render();
+  if (human === 1) setStatus("Your move.");
+  else await aiTurn();
+}
+
+$("newbtn").onclick = newGame;
+window.addEventListener("resize", render);
+newGame();
+</script>
+</body>
+</html>
