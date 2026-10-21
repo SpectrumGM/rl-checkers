@@ -11,6 +11,7 @@
     --white-piece: #fff8f0; --white-edge: #c8beaf; --black-piece: #2a2826; --black-edge: #111;
     --gold: #daa520; --sel: rgba(255, 255, 100, .55); --target: rgba(100, 200, 100, .75);
     --last: rgba(80, 160, 220, .45); --accent: #e0a85a;
+    --win: #5fb36a; --lose: #d9645a; --draw: #c9b27a;
   }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--text);
@@ -19,18 +20,21 @@
   header h1 { margin: 0; font-size: 26px; letter-spacing: -.01em; }
   header p { margin: 6px 0 22px; color: var(--muted); max-width: 640px; }
   header a { color: var(--accent); }
-  .layout { display: grid; grid-template-columns: auto 1fr; gap: 24px; align-items: start; }
+  .layout { display: grid; grid-template-columns: auto minmax(260px, 340px); gap: 24px; align-items: start; }
+  .boardcol { --sq: min(64px, calc((100vw - 70px) / 8)); }
   .play { display: flex; gap: 10px; }
   .evalbar { width: 18px; border-radius: 4px; overflow: hidden; background: var(--black-piece);
              border: 1px solid var(--line); position: relative; }
-  .evalbar .w { position: absolute; left: 0; right: 0; bottom: 0; background: var(--white-piece);
+  .evalbar .w { position: absolute; left: 0; right: 0; bottom: 0; height: 50%; background: var(--white-piece);
                 transition: height .35s ease; }
   .evalbar.flip .w { bottom: auto; top: 0; }
-  .boardcol { --sq: min(64px, calc((100vw - 70px) / 8)); }
+  .boardwrap { position: relative; }
   .board { display: grid; grid-template-columns: repeat(8, var(--sq)); grid-template-rows: repeat(8, var(--sq));
            border: 6px solid var(--frame); border-radius: 4px; user-select: none; }
+  .board.idle { opacity: .55; }
+  .board.thinking { cursor: progress; }
   .sq { position: relative; display: grid; place-items: center; }
-  .sq.l { background: var(--light); } .sq.d { background: var(--dark); cursor: default; }
+  .sq.l { background: var(--light); } .sq.d { background: var(--dark); }
   .sq.last::before, .sq.sel::before, .sq.target::before { content: ""; position: absolute; inset: 0; }
   .sq.last::before { background: var(--last); }
   .sq.sel::before { background: var(--sel); }
@@ -46,26 +50,36 @@
   .coords { display: grid; grid-template-columns: repeat(8, var(--sq)); color: var(--muted); font-size: 11px;
             text-align: center; padding: 4px 0 0 34px; }
 
+  /* small "thinking" dots in the board corner while the engine moves */
+  .dots { position: absolute; right: 12px; bottom: 12px; z-index: 3; display: none; gap: 5px;
+          background: rgba(28, 26, 23, .8); padding: 6px 9px; border-radius: 12px; }
+  .dots.on { display: flex; }
+  .dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); animation: blink 1s infinite; }
+  .dots i:nth-child(2) { animation-delay: .15s; } .dots i:nth-child(3) { animation-delay: .3s; }
+  @keyframes blink { 50% { opacity: .2; } }
+
+  /* result overlay */
+  .result { position: absolute; inset: 6px; z-index: 4; display: none; place-items: center;
+            background: rgba(20, 18, 16, .62); border-radius: 2px; }
+  .result.on { display: grid; animation: fade .25s ease; }
+  @keyframes fade { from { opacity: 0; } }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 26px 34px 22px;
+          text-align: center; box-shadow: 0 12px 40px rgba(0,0,0,.45); min-width: 220px; }
+  .card svg { width: 64px; height: 64px; display: block; margin: 0 auto 10px; }
+  .card .ttl { font-size: 26px; font-weight: 700; margin-bottom: 4px; }
+  .card .sub { color: var(--muted); font-size: 14px; margin-bottom: 18px; }
+  .card.win .ttl { color: var(--win); } .card.lose .ttl { color: var(--lose); } .card.draw .ttl { color: var(--draw); }
+
   .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 18px; }
-  .panel h2 { margin: 0 0 12px; font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  .panel h2 { margin: 0 0 14px; font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
   label { display: block; font-size: 13px; color: var(--muted); margin: 0 0 4px; }
   select, button { font: inherit; color: var(--text); background: #1f1d1a; border: 1px solid var(--line);
-                   border-radius: 7px; padding: 8px 10px; width: 100%; }
-  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+                   border-radius: 7px; padding: 9px 10px; width: 100%; }
+  .field { margin-bottom: 12px; }
   button.primary { background: var(--accent); border-color: var(--accent); color: #1c1a17; font-weight: 600;
-                   cursor: pointer; }
+                   cursor: pointer; margin-top: 4px; }
   button.primary:hover { filter: brightness(1.07); }
-  .status { margin: 16px 0 6px; font-size: 17px; font-weight: 600; min-height: 26px; }
-  .status .think { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--accent);
-                   margin-left: 6px; animation: pulse 1s infinite; vertical-align: middle; }
-  @keyframes pulse { 50% { opacity: .2; } }
-  .evaltext { color: var(--muted); font-size: 13px; margin-bottom: 14px; }
-  .moves { font-family: ui-monospace, Menlo, monospace; font-size: 13px; max-height: 210px; overflow-y: auto;
-           border-top: 1px solid var(--line); padding-top: 10px; color: var(--muted); }
-  .moves ol { margin: 0; padding-left: 26px; } .moves li { padding: 1px 0; }
-  .moves span { display: inline-block; min-width: 70px; color: var(--text); }
-  .about { margin-top: 18px; font-size: 13px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 12px; }
-  .about b { color: var(--text); font-weight: 600; }
+  button.primary:active { transform: translateY(1px); }
   @media (max-width: 760px) { .layout { grid-template-columns: 1fr; } }
 </style>
 </head>
@@ -81,59 +95,61 @@
   <div class="layout">
     <div class="boardcol">
       <div class="play">
-        <div class="evalbar" id="evalbar" title="Neural network evaluation"><div class="w" id="evalw"></div></div>
-        <div class="board" id="board"></div>
+        <div class="evalbar" id="evalbar" title="Neural network evaluation (white = good for White)"><div class="w" id="evalw"></div></div>
+        <div class="boardwrap">
+          <div class="board idle" id="board"></div>
+          <div class="dots" id="dots"><i></i><i></i><i></i></div>
+          <div class="result" id="result">
+            <div class="card" id="card">
+              <div id="icon"></div>
+              <div class="ttl" id="rtitle"></div>
+              <div class="sub" id="rsub"></div>
+              <button class="primary" id="again">Play again</button>
+            </div>
+          </div>
+        </div>
       </div>
       <div class="coords" id="files"></div>
     </div>
 
     <div class="panel">
       <h2>New game</h2>
-      <div class="row">
-        <div>
-          <label for="opp">Opponent</label>
-          <select id="opp">
-            <option value="alphazero">AlphaZero (network + search)</option>
-            <option value="network">Network only (no search)</option>
-            <option value="minimax1">Minimax depth 1</option>
-            <option value="minimax2">Minimax depth 2</option>
-            <option value="minimax3">Minimax depth 3</option>
-            <option value="minimax4">Minimax depth 4</option>
-            <option value="minimax5">Minimax depth 5</option>
-            <option value="random">Random moves</option>
-          </select>
-        </div>
-        <div>
-          <label for="side">You play</label>
-          <select id="side">
-            <option value="1">White (move first)</option>
-            <option value="-1">Black</option>
-          </select>
-        </div>
+      <div class="field">
+        <label for="opp">Opponent</label>
+        <select id="opp">
+          <option value="alphazero">AlphaZero</option>
+          <option value="network">Network only</option>
+          <option value="minimax1">Minimax depth 1</option>
+          <option value="minimax2">Minimax depth 2</option>
+          <option value="minimax3">Minimax depth 3</option>
+          <option value="minimax4">Minimax depth 4</option>
+          <option value="minimax5">Minimax depth 5</option>
+          <option value="random">Random</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="side">You play</label>
+        <select id="side">
+          <option value="1">White</option>
+          <option value="-1">Black</option>
+        </select>
       </div>
       <button class="primary" id="newbtn">Start game</button>
-
-      <div class="status" id="status">Choose an opponent and press Start.</div>
-      <div class="evaltext" id="evaltext"></div>
-
-      <div class="moves"><ol id="moves"></ol></div>
-
-      <div class="about">
-        <b>How to play.</b> Click one of your pieces, then a green dot. Captures are mandatory and multi-jumps
-        are made in one click. A game is drawn after 40 moves without a capture.<br><br>
-        <b>The bar on the left</b> is the network's own estimate of who is winning (white = good for White).
-      </div>
     </div>
   </div>
 </main>
 
 <script>
 const FILES = "abcdefgh";
-let S = null;            // server response: state, legal_moves, winner, eval
-let human = 1, opponent = "alphazero", selected = null, lastSquares = [], busy = false, history = [];
+const ICONS = {
+  win:  '<svg viewBox="0 0 64 64" fill="none" stroke="#5fb36a" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10h24v14a12 12 0 0 1-24 0z"/><path d="M20 15H11a8 8 0 0 0 9 11M44 15h9a8 8 0 0 1-9 11"/><path d="M32 36v10M22 54h20M26 46h12"/></svg>',
+  lose: '<svg viewBox="0 0 64 64" fill="none" stroke="#d9645a" stroke-width="4" stroke-linecap="round"><circle cx="32" cy="32" r="24"/><path d="M22 22l20 20M42 22L22 42"/></svg>',
+  draw: '<svg viewBox="0 0 64 64" fill="none" stroke="#c9b27a" stroke-width="4" stroke-linecap="round"><circle cx="32" cy="32" r="24"/><path d="M21 27h22M21 37h22"/></svg>',
+};
+let S = null;                 // server response: state, legal_moves, winner, eval
+let started = false, human = 1, opponent = "alphazero", selected = null, lastSquares = [], busy = false;
 
 const $ = id => document.getElementById(id);
-const sqName = (r, c) => FILES[c] + (8 - r);
 const flipped = () => human === -1;
 
 async function api(path, body) {
@@ -143,15 +159,14 @@ async function api(path, body) {
   return r.json();
 }
 
-function moveText(m) {
-  const sep = Math.abs(m[0][2] - m[0][0]) === 2 ? "x" : "-";
-  return sqName(m[0][0], m[0][1]) + m.map(s => sep + sqName(s[2], s[3])).join("");
-}
-
 function render() {
   const board = $("board");
   board.innerHTML = "";
-  const myTurn = S && S.winner === null && S.state.current_player === human && !busy;
+  board.classList.toggle("idle", !started);
+  board.classList.toggle("thinking", busy);
+  $("dots").classList.toggle("on", busy);
+
+  const myTurn = started && S && S.winner === null && S.state.current_player === human && !busy;
   const fromSet = new Set(myTurn ? S.legal_moves.map(m => m[0][0] + "," + m[0][1]) : []);
   const targets = new Set(selected && myTurn
       ? S.legal_moves.filter(m => m[0][0] === selected[0] && m[0][1] === selected[1])
@@ -159,8 +174,8 @@ function render() {
 
   for (let i = 0; i < 8; i++) for (let j = 0; j < 8; j++) {
     const r = flipped() ? 7 - i : i, c = flipped() ? 7 - j : j;
-    const d = document.createElement("div");
     const key = r + "," + c;
+    const d = document.createElement("div");
     d.className = "sq " + ((r + c) % 2 ? "d" : "l");
     if (lastSquares.includes(key)) d.classList.add("last");
     if (selected && selected[0] === r && selected[1] === c) d.classList.add("sel");
@@ -178,77 +193,78 @@ function render() {
   }
 
   $("files").innerHTML = [...Array(8)].map((_, j) => `<span>${FILES[flipped() ? 7 - j : j]}</span>`).join("");
-  const ev = S ? S.eval : 0;
+  const ev = S && started ? S.eval : 0;
   $("evalw").style.height = (50 + 50 * ev) + "%";
   $("evalbar").classList.toggle("flip", flipped());
-  $("evalbar").style.height = $("board").offsetHeight + "px";
-  $("evaltext").textContent = S ? `Network evaluation: ${ev >= 0 ? "+" : ""}${ev.toFixed(2)} for White` : "";
-
-  $("moves").innerHTML = history.reduce((acc, m, k) =>
-      k % 2 === 0 ? acc + `<li><span>${m}</span>` : acc + `<span>${m}</span></li>`, "");
-  $("moves").parentElement.scrollTop = 1e6;
+  $("evalbar").style.height = board.offsetHeight + "px";
 }
 
-function setStatus(text, thinking) {
-  $("status").innerHTML = text + (thinking ? '<span class="think"></span>' : "");
+function showResult() {
+  if (!S || S.winner === null) return false;
+  const kind = S.winner === 0 ? "draw" : (S.winner === human ? "win" : "lose");
+  const name = $("opp").options[$("opp").selectedIndex].text;
+  $("card").className = "card " + kind;
+  $("icon").innerHTML = ICONS[kind];
+  $("rtitle").textContent = { win: "Victory", lose: "Defeat", draw: "Draw" }[kind];
+  $("rsub").textContent = { win: `You beat ${name}`, lose: `${name} won`,
+                            draw: "40 moves without a capture" }[kind];
+  $("result").classList.add("on");
+  return true;
 }
 
-function afterMove() {
-  if (S.winner !== null) {
-    const msg = S.winner === 0 ? "Draw." : (S.winner === human ? "You win!" : "You lose.");
-    setStatus(msg);
-    return true;
-  }
-  return false;
-}
+function markLast(m) { lastSquares = [m[0][0] + "," + m[0][1], ...m.map(s => s[2] + "," + s[3])]; }
 
 async function aiTurn() {
-  busy = true;
-  setStatus("Opponent is thinking", true);
-  render();
+  busy = true; render();
   try {
     S = await api("/api/ai", { state: S.state, opponent });
-    const m = S.ai_move;
-    lastSquares = [m[0][0] + "," + m[0][1], ...m.map(s => s[2] + "," + s[3])];
-    history.push(moveText(m));
-  } catch (e) { setStatus("Error: " + e.message); busy = false; render(); return; }
-  busy = false;
-  if (!afterMove()) setStatus("Your move.");
-  render();
+    markLast(S.ai_move);
+  } catch (e) { alert("Server error: " + e.message); }
+  busy = false; render();
+  showResult();
 }
 
 async function click(r, c, fromSet, targets) {
-  if (busy || !S || S.winner !== null || S.state.current_player !== human) return;
+  if (!started || busy || !S || S.winner !== null || S.state.current_player !== human) return;
   const key = r + "," + c;
   if (fromSet.has(key)) { selected = [r, c]; render(); return; }
   if (selected && targets.has(key)) {
     const move = S.legal_moves.find(m => m[0][0] === selected[0] && m[0][1] === selected[1]
                                          && m[m.length - 1][2] === r && m[m.length - 1][3] === c);
-    selected = null;
-    busy = true;
+    selected = null; busy = true;
     try { S = await api("/api/move", { state: S.state, move }); }
-    catch (e) { setStatus("Error: " + e.message); busy = false; render(); return; }
+    catch (e) { alert("Server error: " + e.message); busy = false; render(); return; }
     busy = false;
-    lastSquares = [move[0][0] + "," + move[0][1], ...move.map(s => s[2] + "," + s[3])];
-    history.push(moveText(move));
+    markLast(move);
     render();
-    if (!afterMove()) await aiTurn();
+    if (!showResult()) await aiTurn();
   }
 }
 
 async function newGame() {
   human = +$("side").value;
   opponent = $("opp").value;
-  selected = null; lastSquares = []; history = [];
-  S = await api("/api/new");
+  selected = null; lastSquares = [];
+  $("result").classList.remove("on");
+  $("newbtn").textContent = "Restart game";
+  busy = true; render();
+  try { S = await api("/api/new"); }
+  catch (e) { alert("Server error: " + e.message); busy = false; render(); return; }
+  started = true; busy = false; render();
+  if (human === -1) await aiTurn();     // engine plays White and moves first
+}
+
+async function preview() {
+  // show the starting position (inactive) until the player presses Start game
+  try { S = await api("/api/new"); } catch (e) { S = null; }
   render();
-  if (human === 1) setStatus("Your move.");
-  else await aiTurn();
 }
 
 $("newbtn").onclick = newGame;
+$("again").onclick = newGame;
+$("side").onchange = () => { if (!started) { human = +$("side").value; render(); } };
 window.addEventListener("resize", render);
-newGame();
+preview();
 </script>
 </body>
 </html>
