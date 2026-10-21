@@ -91,27 +91,7 @@ The three scripts are the three stages run one after another (each loads the pre
 stage's `alpha_checkers.pth`), kept separate as they were developed. `models/` contains the
 final model and every 5th checkpoint; the full training output is in `training_log*.txt`.
 
-## How the evaluation was fixed
 
-The first version of `evaluate.py` played Alpha (White) against minimax 10 times from the
-starting position and reported "all draws". Both players are **deterministic** (MCTS
-without noise picks the most-visited move; minimax picks the first best move), so those 10
-games were **one game repeated 10 times**, and an untrained network drew that same line too.
-
-`benchmark.py` fixes this: random openings so every game differs, both colors, an
-untrained-network baseline, confidence intervals, and an Elo fit across all players.
-
-## Known limitations
-
-- **Move encoding.** `encode_move` maps a move to `(from_square * 4 + direction) % 200`.
-  The modulo makes 24 slots shared by two different moves (about 1% of positions have two
-  legal moves on the same index), and moves are not flipped for Black although the board is.
-  32 dark squares × 4 directions = 128 actions with a flip would fix it, but changes the
-  network's output layer, so it needs retraining.
-- No Dirichlet noise at the root, no replay buffer across iterations, and no gating (a new
-  network replaces the old one without having to beat it).
-- Self-play runs in a single process; it is the bottleneck, not the network.
-- Draw rule: 40 consecutive plies without a capture.
 
 ## Run it
 
