@@ -38,25 +38,6 @@ the level of a **2–3 ply minimax search**:
 
 ![Elo ladder](figures/elo_ladder.png)
 
-### Strength during training
-
-Every 5th checkpoint, plus the untrained network, played 30 games against minimax depth 3:
-
-![Learning curve](figures/learning_curve_d3.png)
-
-**The curve is flat.** Against depth 3 the score stays between 0.17 and 0.43 for the whole run;
-the 95% bands of almost all checkpoints overlap, so most ups and downs are noise. The engine
-learned to hold draws but not to convert wins. Two reasons:
-
-1. **The value head collapsed toward zero.** About two thirds of training games were draws, so
-   the cheapest way to lower the value loss was to always predict ~0. Probing the final network:
-   a position where White is three men up gets a value of −0.04, the same as the start position
-   (−0.11). With a flat value, MCTS cannot tell a winning line from a drawn one.
-2. **No gating and no replay buffer.** Each new network replaced the previous one without having
-   to beat it, and trained only on the latest iteration's 40 games, so strength could drift down
-   as easily as up.
-
-Next steps: adjudicate long draws by material, keep a replay buffer, and gate new networks.
 
 ## How it works
 
