@@ -39,27 +39,6 @@ the level of a **2–3 ply minimax search**:
 ![Elo ladder](figures/elo_ladder.png)
 
 
-## How it works
-
-```
-play.py ──► MCTSAgent (training/mcts.py) ──► AlphaCheckersNet (training/model.py) ◄── models/alpha_checkers.pth
-               │                                  ▲
-               ▼                                  │ trained by
-          CheckersGame (game/checkers.py)    train.py → train_v2.py → train_v3.py
-                                                  │
-                                                  ▼ opponents
-                                     agents/random_agent.py, agents/minimax_agent.py
-```
-
-**Network** (`training/model.py`). Input: four 8×8 planes (own men, own kings, opponent men,
-opponent kings), always from the side to move. Three 3×3 conv layers (64, 128, 128 channels)
-with batch norm feed a policy head (200 move logits) and a value head (tanh, −1 to +1).
-
-**Search** (`training/mcts.py`). Each move runs 50 simulations: descend the tree by
-$\text{UCB} = Q + c\,P\,\frac{\sqrt{N_{\text{parent}}}}{1+N}$, expand the new leaf with the
-network's move priors, back up the network's value with the sign flipped at each level, and
-finally play the most-visited move.
-
 **Training** — three stages, 80 iterations in total:
 
 | Stage | Script | What happens | Checkpoints |
