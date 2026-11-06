@@ -23,7 +23,7 @@ A longer run of 100 games each confirms it: **0.48** [0.45, 0.51] vs minimax dep
 even) and **0.36** [0.31, 0.42] vs depth 3 (4–65–31, clearly weaker). Before training, the
 same search with random weights scored 0.23 vs random play and 0.00 vs depth 3.
 
-Fitting Elo ratings to all matches (minimax depth 1 anchored at 1000) places the engine at
+Fitting Elo ratings to matches (minimax depth 1 anchored at 1000) places the engine at
 the level of a **2–3 ply minimax search**:
 
 | Player | Elo |
