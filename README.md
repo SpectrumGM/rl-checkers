@@ -8,7 +8,7 @@ A checkers engine in the style of DeepMind's AlphaZero
 
 The final model searches **50 positions per move**. Every match below is 30 games from
 randomized openings (the first 4 plies are random), with each opening played once as White
-and once as Black. Score counts a win as 1 and a draw as 0.5; brackets are 95% intervals.
+and once as Black. Score counts a win as 1 and a draw as 0.5.
 
 | Opponent | W–D–L | Score |
 |---|---|---|
